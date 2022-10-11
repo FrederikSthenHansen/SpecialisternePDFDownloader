@@ -33,9 +33,9 @@ $myEndIndex=
 # This ends the User Input Area
 ####################################################
 
-Write-debug -Message $myStartIndex
+#Write-debug -Message $myStartIndex
 
- if ($myStartIndex -isnot[int]) {Write-Output -InputObject "no start index"}
+# if ($myStartIndex -isnot[int]) {Write-Output -InputObject "no start index"}
 
 
 
@@ -54,7 +54,7 @@ $ExcelWorkSheet = $ExcelWorkBook.Sheets.Item($mySheet)
 
  #col AL
 # Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 38).value2
- $myUrl=$ExcelWorkSheet.cells.Item(4, 38).value2
+ #$myUrl=$ExcelWorkSheet.cells.Item(4, 38).value2
 
  #col AM
  #Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 39).value2
@@ -66,7 +66,7 @@ $ExcelWorkSheet = $ExcelWorkBook.Sheets.Item($mySheet)
  $ExcelWorkSheet.UsedRange.Rows.Count
 
 $rowsToLoopThrough=( $ExcelWorkSheet.UsedRange.Rows.Count )
- Write-Output -InputObject $rowsToLoopThrough
+# Write-Output -InputObject $rowsToLoopThrough
 
 
  
@@ -79,22 +79,29 @@ while($myLoopIterator-le($rowsToLoopThrough))
  $myDestination="{0}{1}{2}" -f $myOutputPath,$myName,".PDF"
 # Write-Output -InputObject $myDestination
         # start downloading PDF
+        $connectionAttempts=0
+        $transferWait=0
  $Job = Start-BitsTransfer -Source $myUrl -Destination $myDestination -DisplayName $myName -Asynchronous 
+ 
+ # set max download time to 10 seconds and gives it 60 seconds (the minimum allowed by the BitsJob) to succesfully connect
+ $Job= Set-BitsTransfer -BitsJob $Job -MaxDownloadTime 20 -RetryInterval 120 -RetryTimeout 60
 
     while (($Job.JobState -eq "Transferring") -or ($Job.JobState -eq "Connecting")) `
        {$transferMessage= "{0} {1}" -f $Job.JobState,$myName;
        Write-Output -InputObject $transferMessage;
        sleep 5;
+       if($connectionAttempts>3){$Job.re}
+       if ($Job.JobState -eq "Connecting"){$connectionAttempts++}
        } # Poll for status, sleep for 5 seconds, or perform an action.
 
     Switch($Job.JobState)
     {    #succesful download
-    "Transferred" { Write-Output -InputObject $tranferMessage
+    "Transferred" { Write-Output -InputObject $transferMessage
     Complete-BitsTransfer -BitsJob $Job}
 
     
     #failed
-    "Error" {$Job | Format-List } # List the errors.
+    "Error" {Write-output -inputObject $transfermesage;  $Job | Format-List } # List the errors.
     default {"Other action"} #  Perform corrective action.
 
     #HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
@@ -103,3 +110,5 @@ while($myLoopIterator-le($rowsToLoopThrough))
 
     $myLoopIterator++
 }
+$doneMessage= "All documents attempted downloaded"
+Write-out -inputObject $doneMessage
