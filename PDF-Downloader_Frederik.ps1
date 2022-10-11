@@ -20,7 +20,7 @@ $mySheet= "0"
 #input the path you want the downloaded files deposited at:
 #example: $myOutputPath= "C:\Users\KOM\Documents
 
-$myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmeringcase2\Ny mappe\Output"
+$myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmeringcase2\Ny mappe (2)\SpecialisternePDFDownloader\Output-Reports\"
 
 #HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
 
@@ -49,15 +49,15 @@ $ExcelWorkSheet = $ExcelWorkBook.Sheets.Item($mySheet)
 
 #BR number
 #Cells.item(row, Colnmbr) = 
- Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 1).value2
+# Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 1).value2
  
 
  #col AL
- Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 38).value2
+# Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 38).value2
  $myUrl=$ExcelWorkSheet.cells.Item(4, 38).value2
 
  #col AM
- Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 39).value2
+ #Write-Output -InputObject $ExcelWorkSheet.cells.Item(4, 39).value2
 
 
 
@@ -76,16 +76,21 @@ while($myLoopIterator-le($rowsToLoopThrough))
  $myName=$ExcelWorkSheet.cells.Item($myLoopIterator, 1).value2
  $myUrl=$ExcelWorkSheet.cells.Item($myLoopIterator, 38).value2
 
+ $myDestination="{0}{1}{2}" -f $myOutputPath,$myName,".PDF"
+# Write-Output -InputObject $myDestination
         # start downloading PDF
- $Job = Start-BitsTransfer -Source $myUrl `
-       -Destination $myOutputPath -DisplayName $myName -Asynchronous 
+ $Job = Start-BitsTransfer -Source $myUrl -Destination $myDestination -DisplayName $myName -Asynchronous 
 
     while (($Job.JobState -eq "Transferring") -or ($Job.JobState -eq "Connecting")) `
-       { sleep 5;} # Poll for status, sleep for 5 seconds, or perform an action.
+       {$transferMessage= "{0} {1}" -f $Job.JobState,$myName;
+       Write-Output -InputObject $transferMessage;
+       sleep 5;
+       } # Poll for status, sleep for 5 seconds, or perform an action.
 
     Switch($Job.JobState)
     {    #succesful download
-    "Transferred" {$myReportPDF= Complete-BitsTransfer -BitsJob $Job|Out-file -FilePath $myOutputPath+$myName+".PDF" -Force}
+    "Transferred" { Write-Output -InputObject $tranferMessage
+    Complete-BitsTransfer -BitsJob $Job}
 
     
     #failed
