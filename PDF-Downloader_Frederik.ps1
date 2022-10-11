@@ -30,6 +30,12 @@ $myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmering
 #Input ending index
 #$myEndIndex=
 
+#comment this out by placing a # in front of it, if you want the script loop all used rows in the excel sheet
+#$rowsToLoopThrough=$myEndIndex
+
+
+
+
 # This ends the User Input Area
 ####################################################
 
@@ -70,6 +76,15 @@ $rowsToLoopThrough=( $ExcelWorkSheet.UsedRange.Rows.Count )
 
 $myJobs = New-Object System.Collections.ArrayList
  
+
+############
+#PLACEHOLDER CODE FOR TESTING!!!
+
+$rowsToLoopThrough= 500
+
+
+########
+
 $myLoopIterator=1
 while($myLoopIterator-le($rowsToLoopThrough))
 {
@@ -103,7 +118,7 @@ while($myLoopIterator-le($rowsToLoopThrough))
  # set max download time to 10 seconds and gives it 60 seconds (the minimum allowed by the BitsJob) to succesfully connect
  $Job= Set-BitsTransfer -BitsJob $Job -MaxDownloadTime 10 -RetryInterval 60 -RetryTimeout 60
  # Get-BitsTransfer -AllUsers
-
+ 
  
    $myJobs.Add($job)>$null;
 
@@ -122,7 +137,7 @@ while (($myItem.JobState -eq "Transferring") -or ($myItem.JobState -eq "Connecti
 
        if ($myItem.JobState -eq "Connecting"){$connectionAttempts++;$transferMessage="{0} {1} {2}"-f $transferMessage,"Connection attempts:",$connectionAttempts }
 
-       if($connectionAttempts>3){$myItem.JobState="Error"}
+      # if($connectionAttempts>3){$myItem.JobState="Error"}
        } # Poll for status, sleep for 3 seconds, or perform an action.
 
     Switch($myItem.JobState)
@@ -133,7 +148,8 @@ while (($myItem.JobState -eq "Transferring") -or ($myItem.JobState -eq "Connecti
 
     
     #failed
-    "Error" {Write-output -inputObject $transfermesage;  $myItem | Format-List } # List the errors.
+    "Error" { # Write-output -inputObject $transfermesage;  
+    $myItem | Format-List } # List the errors.
     default {"Other action"} #  Perform corrective action.
 
     #HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
@@ -143,5 +159,5 @@ while (($myItem.JobState -eq "Transferring") -or ($myItem.JobState -eq "Connecti
 }
 
 
-$doneMessage= "All documents attempted downloaded"
-Write-out -inputObject $doneMessage
+$doneMessage= "All documents attempted downloaded";
+Write-Output -inputObject $doneMessage;
