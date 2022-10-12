@@ -38,6 +38,17 @@ $myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmering
 
 #HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
 
+
+#Use the snippet here in the Powershell console for easy cleaning away of TMP files (remove the # fron each line of the snippet, to activate the code
+# and add them again to disable the code (not needed per se)
+#Snippet starts below:
+
+# $myFolderPath=$myOutputPath.Remove($myOutputPath.Length-1, 1);
+# get-childitem -path $myFolderPath -include *.tmp -Force -Recurse| foreach ($_) {remove-item $_.fullname -Force};
+
+#snippet ends above:
+##### 
+
 #input start index
 #$myStartIndex= 
 
@@ -340,7 +351,7 @@ foreach ($pdf in $myPDFs)
     
 }
 
- $doneMessage= "All PDF's verified";
+ $doneMessage= "All PDF's verified. The script is now finished!";
 Write-Output -inputObject $doneMessage;
 
 
