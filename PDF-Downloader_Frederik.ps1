@@ -31,13 +31,18 @@ $mySecondUrlColumn=39
 $myNamingColumn=1
 
 #input the path you want the downloaded files deposited at:
-#example: $myOutputPath= "C:\Users\Documents
+#example: $myOutputPath= "C:\Users\Documents"
 
 $myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmeringcase2\Ny mappe (2)\SpecialisternePDFDownloader\Output-Reports\"
 
 
 #HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
 
+# Here you can input the intended location for the Excel workbook detailing the results from executing the script
+# By default the results will be stored in the same folder as the PDF's
+# Example of default: $myResultsPath=$myOutputPath
+# Example of custom path: $myResultsPath= "C:\Users\Documents\my-results-folder"
+$myResultsPath=$myOutputPath
 
 #Use the snippet here in the Powershell console for easy cleaning away of TMP files (remove the # fron each line of the snippet, to activate the code
 # and add them again to disable the code (not needed per se)
@@ -71,18 +76,45 @@ $myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmering
 # Functions section:
 ##########
 
+function My-verify-PDFs
+{
+
+#Reset my excel row counter to overwrite previous results to reflect any change.
+$resultNumber=2
+
+    foreach ($pdf in $myPDFs)
+    {
+    $verifiedString="";
+    $resultString
+    $myPdfPath="{0}{1}{2}" -f $myOutputPath,$pdf.BaseName,$pdf.Extension ;
+    $myPdfContent=Get-Content -Path $myPdfPath -TotalCount 3 ;
+    if($myPdfContent -like "*%PDF-*"){$verifiedString= "{0} {1}" -f $pdf.BaseName, "Verified!"; $resultstring= "Succesful"; }
+
+    elseif($myPdfContent -like "*<!DOCTYPE html>*") {$verifiedString="{0} {1}" -f $pdf.BaseName, "is a HTML-file"; $resultString= "Failed";}
+
+    else{$verifiedString="{0} {1}" -f $pdf.BaseName, "is not a PDF"; $resultString= "Failed";}
+
+    if($resultString -like "*Failed*"){Remove-Item $pdf.fullname;}
+    write-output -InputObject $verifiedString;
+
+    # My-add-to-results $pdf.BaseName $resultString $verifiedString;
+    
+    }
+}
+
 function My-Attempt-Download
 { 
 param([bool]$isFirstAttempt,[string]$url, [string]$backupUrl, [string]$fileName, [string]$destination)
 
-if($isFirstAttempt -eq $true){$myMethodUrl=$url} else{ if($backupUrl -ne $null){$myMethodUrl=$backupUrl}}
+# if($isFirstAttempt -eq $true){$myMethodUrl=$url} 
+# else{if($backupUrl -ne $null){$myMethodUrl=$backupUrl}}
 
 
+$myMethodUrl=$url;
 
 
-
-if ($backupUrl -eq ""){$backupUrl="no available description"}
-
+if ($backupUrl -like ""){$backupUrl="not available"}
+if ($myMethodUrl -like ""){$myMethodUrl="not available"}
 
 
 Write-Output -InputObject "now attempting download with the parameters below:";
@@ -100,20 +132,36 @@ Write-Output -InputObject $fileName
 Write-Output -InputObject ""
 
 
-if ($myMethodUrl-eq "" -or $myMethodUrl -eq "no available description"){Write-Output -InputObject "No URL found: Download attempt abandoned"; return}
+if ( $myMethodUrl -like "*not available*")
+    {
+        $missingUrl="No functional URL found: Download attempt abandoned"
+        Write-Output -InputObject $missingUrl;
+        
+        #assign the backupURL as the URL for the next attempt
+        $url=$backupUrl;
 
-$Job = Start-BitsTransfer -Source $myMethodUrl -Destination $destination -DisplayName $fileName -Description $backupUrl -Asynchronous -SecurityFlags RedirectPolicyDisallow
+        $backupUrl="{0}  {1}" -f $backupUrl, "This is a retry!"
+        
+        $isFirstAttempt=$false;
+        
+    }
 
- # set max download time to 10 seconds and gives it 60 seconds (the minimum allowed by the BitsJob) to succesfully connect
- $Job= Set-BitsTransfer -BitsJob $Job -MaxDownloadTime 10 -RetryInterval 60 -RetryTimeout 60
+    #make sure this is not a 3rd retry
+ If ($backupUrl -cnotlike "*This is a retry!  This is a retry!*")
+    {   
 
- 
+        $Job = Start-BitsTransfer -Source $myMethodUrl -Destination $destination -DisplayName $fileName -Description $backupUrl -Asynchronous 
 
- Write-Output -InputObject "Bitsjob description:"
- Write-Output -InputObject $Job.Description
+        # set max download time to 10 seconds and gives it 60 seconds (the minimum allowed by the BitsJob) to succesfully connect
+        $Job= Set-BitsTransfer -BitsJob $Job -MaxDownloadTime 10 -RetryInterval 60 -RetryTimeout 60
 
- if($isFirstAttempt -eq $true){$myJobs.Add($job)>$null;}else{$myRetryJobs.Add($job)>$null}
+        # Write-Output -InputObject "Bitsjob description:"
+        # Write-Output -InputObject $Job.Description
 
+        if($isFirstAttempt -eq $true){$myJobs.Add($job)>$null;}
+        else{$myRetryJobs.Add($job)>$null}
+    }
+ # else {My-add-to-results $fileName "Failed" $missingUrl}
  
 }
 
@@ -131,22 +179,33 @@ while (($myLittleItem.JobState -eq "Transferring") -or ($myLittleItem.JobState -
        {
         $transferMessage= "{0} {1}" -f $Job.JobState,$myName;
         Write-Output -InputObject $transferMessage;
-        sleep 3;
         
-
+        
         if ($myLittleItem.JobState -eq "Connecting")
         {
             $connectionAttempts++;
             $transferMessage="{0} {1} {2}"-f $transferMessage,"Connection attempts:",$connectionAttempts;
             Write-Output -InputObject $transferMessage
-            if($connectionAttempts -ge 30)
+            if($connectionAttempts -ge 3)
             {
                 Write-Output -inputObject "Download timed out! quitting transfer";
 
-                $description=$myLittleItem.Description
-                $myName=$myLittleItem.DisplayName
-                $myDestination="{0}{1}{2}" -f $myOutputPath,$myName,".PDF";
-               $job2= My-Attempt-Download $false $myUrl $description $myName $myDestination; 
+                # make sure this is not a 3rd retry
+                If ($myLittleItem.Description -cnotlike "*This is a retry!  This is a retry!*")
+                {
+                    # this is on purpose! 
+                    $myUrl= $myLittleItem.Description
+                    #
+
+                    $description=$myLittleItem.Description
+                    $myName=$myLittleItem.DisplayName
+                    $myDestination="{0}{1}{2}" -f $myOutputPath,$myName,".PDF";
+
+                    #Create new download job with 2nd URl
+                    $job2= My-Attempt-Download $false $myUrl $description $myName $myDestination; 
+                }
+
+                #Remove the failed download job from the que
                 Remove-BitsTransfer -BitsJob $myLittleItem;
             }
         }
@@ -156,29 +215,32 @@ while (($myLittleItem.JobState -eq "Transferring") -or ($myLittleItem.JobState -
 
     Switch($myLittleItem.JobState)
     {    #succesful download
-    "Transferred" {$transferMessage="{0} {1}"-f $myLittleItem.DisplayName, "is now fully downloaded!"
-     Write-Output -InputObject $transferMessage
-    get-bitsTransfer -JobId $myLittleItem.JobId | Complete-BitsTransfer}
+    "Transferred" 
+        {
+        $transferMessage="{0} {1}"-f $myLittleItem.DisplayName, "is now fully downloaded!";
+        Write-Output -InputObject $transferMessage;
+        get-bitsTransfer -JobId $myLittleItem.JobId | Complete-BitsTransfer
+        }
 
     
     #failed
     "Error" 
-    {
-     # Write-output -inputObject $transfermesage;  
-    $myLittleItem | Format-List ;  
-    } # List the errors.
+        {
+        # Write-output -inputObject $transfermesage;  
+        # $myLittleItem | Format-List ;  
+        } # List the errors.
 
     default 
-    {
-    "retrying with second link"; 
-    # Suspend-BitsTransfer -BitsJob $myItem; 
-    $description= $myLittleItem.Description
-    Write-Output -inputObject "Now writing description";
-    Write-Output -InputObject $description;
-    $myName=$myLittleItem.DisplayName
+        {
+        "retrying with second link"; 
+        # Suspend-BitsTransfer -BitsJob $myItem; 
+        $description= $myLittleItem.Description
+        Write-Output -inputObject "Now writing description";
+        Write-Output -InputObject $description;
+        $myName=$myLittleItem.DisplayName
 
-    $2ndJob= My-Attempt-Download $false $myUrl $description $myName $myDestination
-    } #  Perform corrective action.
+        $2ndJob= My-Attempt-Download $false $myUrl $description $myName $myDestination
+        } #  Perform corrective action.
 
     #HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
 
@@ -188,6 +250,66 @@ while (($myLittleItem.JobState -eq "Transferring") -or ($myLittleItem.JobState -
 
 }
 
+function My-end-result-writing 
+{
+
+    $ExcelResultsBook=$ExcelObj.workbooks.add()
+    $resultSheet = $ExcelResultsBook.worksheets.item(1)
+    $resultSheet.name ="0" # "Download Results"
+
+
+    $resultSheet.cells.item(1,1) = 'BR-Number'
+    $resultSheet.cells.item(1,2) = 'Download-result'
+    $resultSheet.cells.item(1,3) = 'Notes'
+
+    $myResult;
+    $myExplanation
+
+$myPDFs= Get-ChildItem -File -Exclude .tmp -Include *.PDF -Path $myFolderPath -Recurse
+
+$resultNumber=2
+while($resultNumber -le ($rowsToLoopThrough))
+    {
+     $resultBR=$ExcelWorkSheet.cells.Item($resultNumber, $myNamingColumn).value2;
+     $myWildBR="{0}{1}{2}"-f "*",$resultBR,"*"; 
+
+
+     $PdfsString=$myPDFs.Basename ;
+
+     #Check is BR is missing from folder and add negative end result if true: NOt working currently. all PDF are listed as failed.
+     if ($myPDFs.Basename.Contains($resultBR))
+        {
+          $myResult= "Successful";$myExplanation="";
+        }
+    else{#### Long winded code for insert a new row
+            #add new row to the sheet and record the result
+            $eRow = $resultsheet.cells.item($resultNumber,1).entireRow
+            $active = $eRow.activate()
+            
+            $xlShiftDown = [microsoft.office.interop.excel.xlDirection]::xlDown;
+
+            $active = $eRow.insert($xlShiftDown)
+            ### end of long-winded code for inserting a new row
+
+            $myResult="Failed";
+            $myExplanation="None of the Urls returned a PDF"   }
+
+        My-add-to-results $resultBR $myResult $myExplanation
+        
+       $resultNumber++;
+    }
+
+     
+$savestring= "{0}{1}" -f $myResultsPath, "results.xlsx";
+
+ #end by saving the file, making it read-only in the process
+ $ExcelResultsBook.SaveAs($savestring);
+ $ExcelResultsBook.Close
+ $excelobj.Quit()
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($excelobj)
+Remove-Variable excelobj
+}
+
 function My-add-to-results
 {
 param ([string]$paramObject,[string]$paramResult,[string]$paramNotes )
@@ -195,35 +317,41 @@ param ([string]$paramObject,[string]$paramResult,[string]$paramNotes )
 
 $looper=1
  while($looper -le 3)
- { #switch($looper){} ##CONTINUE HERE!!!!
+ { 
  $filler;
+
+ switch($looper)
+ {
+ 1 {$filler= $paramObject;}
+ 2{$filler =$paramResult;}
+ 3{$filler=$paramNotes}
+ } 
+
+ 
+ #Write a row in the excel sheet
  $resultSheet.cells.item($resultNumber,$looper)=$filler
 
- $resultNumber++;
+ 
+
+ 
 
  $looper++;
  }
+ 
 }
 
 #######
 #end of the functions seciton
 ########
 
+$timer = [Diagnostics.Stopwatch]::StartNew()
+
 
 # Opens excel
 $ExcelObj = New-Object -comobject Excel.Application
 
 # Make my results spreadsheet
-$ExcelResultsBook=$ExcelObj.workbooks.add()
-$resultSheet = $ExcelResultsBook.worksheets.item(1)
-$resultSheet.name = "Download Results"
 
-
-$resultSheet.cells.item(1,1) = 'BR-Number'
-$resultSheet.cells.item(1,2) = 'Download-result'
-$resultSheet.cells.item(1,3) = 'Notes'
-
-$resultNumber=2
 #
 
 
@@ -232,7 +360,7 @@ $ExcelWorkBook = $ExcelObj.Workbooks.Open($myExcelPath)
 
 
 
-$ExcelResultsBook
+
 #Opens sheet
 $ExcelWorkSheet = $ExcelWorkBook.Sheets.Item($mySheet)
 
@@ -246,7 +374,7 @@ $myRetryJobs = New-Object System.Collections.ArrayList
 ############
 #PLACEHOLDER CODE FOR TESTING!!!
 
-$rowsToLoopThrough= 50
+ $rowsToLoopThrough= 50
 
 ########
 
@@ -305,11 +433,27 @@ $backupUrl="";
     $myLoopIterator++
 }
 
+Write-Output -InputObject "Done with initiating all downloads";
+
+Write-Output -InputObject $timer.elapsed.totalseconds;
+
+Write-Output -InputObject "";
+
 Write-Output -InputObject "Now Looping through myJobs"
 My-loop-thorugh-BitsJobs $myJobs;
 
-Write-Output -InputObject "Now Looping through myRetryJobs"
-My-loop-thorugh-BitsJobs $myRetryJobs;
+Write-Output -InputObject "Done with Looping through myJobs";
+
+Write-Output -InputObject $timer.elapsed.totalseconds;
+Write-Output -InputObject "";
+
+
+
+
+Write-Output -InputObject "Done with Looping through myRetryJobs";
+
+Write-Output -InputObject $timer.elapsed.totalseconds;
+Write-Output -InputObject "";
 
 
 #foreach ($myItem in $myJobs)
@@ -323,35 +467,28 @@ $myFolderPath=$myOutputPath.Remove($myOutputPath.Length-1, 1)
 get-childitem -path $myFolderPath -include *.tmp -Force -Recurse| foreach ($_) {remove-item $_.fullname -Force}
 Write-Output -InputObject "Cleaning done"
 
+Write-Output -InputObject $timer.elapsed.totalseconds;
+Write-Output -InputObject "";
+
 
 $doneMessage= "All documents attempted downloaded";
 Write-Output -inputObject $doneMessage;
 
+Write-Output -InputObject $timer.elapsed.totalseconds;
+Write-Output -InputObject "";
+
+My-verify-PDFs;
 
 
+Write-Output -InputObject "Now Looping through myRetryJobs"
+My-loop-thorugh-BitsJobs $myRetryJobs;
 
-# $myPDFs= New-Object System.Collections.ArrayList
+My-verify-PDFs;
 
-$myPDFs= Get-ChildItem -File -Exclude .tmp -Include *.PDF -Path $myFolderPath -Recurse
 
-foreach ($pdf in $myPDFs)
-{
-    $myPdfPath="{0}{1}{2}" -f $myOutputPath,$pdf.BaseName,$pdf.Extension ;
-    $myPdfContent=Get-Content -Path $myPdfPath -TotalCount 3 ;
-    if($myPdfContent -like "*%PDF-*"){$verifiedString= "{0} {1}" -f $pdf.BaseName, "Verified!"; }
-    elseif($myPdfContent -like "*<!DOCTYPE html>*")
-    {
-    $verifiedString="{0} {1}" -f $pdf.BaseName, "is a HTML-file and will be removed";
-    
-    #Remember to Update my results sheet here!!
-     
-    Remove-Item $pdf.fullname;
-    }
-    write-output -InputObject $verifiedString;
-    
-}
+My-end-result-writing;
 
  $doneMessage= "All PDF's verified. The script is now finished!";
 Write-Output -inputObject $doneMessage;
 
-
+Write-Output -InputObject $timer.elapsed.totalseconds;
