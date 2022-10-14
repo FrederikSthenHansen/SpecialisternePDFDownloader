@@ -138,14 +138,20 @@ function My-check-downloadStatus
         { if($list -ne $myRetryJobs)
             {
             $retryMessage="{0} {1}"-f $ParamJob.Displayname, "retrying with second link"; 
-            # Suspend-BitsTransfer -BitsJob $myItem; 
+             
             Write-Output -inputObject $retryMessage;
             # Write-Output -InputObject $description;
+
             $myName=$ParamJob.DisplayName;
             $description=$ParamJob.Description;
             $myDestination="{0}{1}{2}" -f $myOutputPath,$myName,".PDF";
+            #############
+            #THis Bits transfer needs fixing!!!
+
             #$true $myUrl $backupUrl $myName $myDestination
             $2ndJob= My-Attempt-Download $false $myUrl $description $myName $myDestination
+
+            #####################
             }
         } #  Perform corrective action.
 
