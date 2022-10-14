@@ -343,6 +343,62 @@ $looper=1
  
 }
 
+function My-Attempt-Download
+{ 
+    param([bool]$isFirstAttempt,[string]$url, [string]$backupUrl, [string]$fileName, [string]$destination)
+    $myMethodUrl=$url;
+    if ($backupUrl -like ""){$backupUrl="not available"}
+    if ($myMethodUrl -like ""){$myMethodUrl="not available"}
+    $myAttemptString= "{0} {1} {2} {3}" -f "now attempting download:",$fileName,"from the url:",$url;
+ 
+    
+    if ( $myMethodUrl -like "*not available*")
+        {
+            $missingUrl="No functional URL found: Download attempt abandoned"
+            Write-Output -InputObject $missingUrl;
+        
+            #assign the backupURL as the URL for the next attempt
+            $url=$backupUrl;
+            $backupUrl="{0}  {1}" -f $backupUrl, "This is a retry!"
+        
+            $isFirstAttempt=$false;
+        }
+    #make sure this is not a 3rd retry
+    If ($backupUrl -cnotlike "*This is a retry!  This is a retry!*")
+        {   
+            Write-Output -InputObject $myAttemptString ;
+            Write-Output -InputObject "";
+            
+            $Job = Start-BitsTransfer -Source $myMethodUrl -Destination $destination -DisplayName $fileName -Description $backupUrl -Asynchronous 
+            # set max download time to in seconds and max time to connect in seconds
+            $Job= Set-BitsTransfer -BitsJob $Job -MaxDownloadTime 180 -RetryInterval 60 -RetryTimeout 180
+            #Add the bitsjob to either the 1st or 2nd attempt collection
+
+            if($isFirstAttempt -eq $true){$myJobs.Add($job)>$null;}
+            else{$myRetryJobs.Add($job)>$null}
+        }
+ 
+}
+
+function My-loop-thorugh-BitsJobs
+{ 
+param([System.Collections.ArrayList]$list)
+foreach ($myLittleItem in $list)
+{ 
+    ### this loops for every bit transfer untill it is no longer 
+    while (($myLittleItem.JobState -eq "Transferring")) # -or ($myLittleItem.JobState -eq "Connecting")) `
+        {
+        $transferMessage= "{0} {1}" -f $myLittleItem.JobState,$myLittleItem.DisplayName;
+        Write-Output -InputObject $transferMessage;
+
+        #Wait for 5 seconds
+        sleep 5;
+        }
+      ### this loops for every bit transfer untill it is no longer connecting
+     #Check status of the bitsjob
+     My-check-downloadStatus $myLittleItem 0
+    }
+}
 
 
 #######
@@ -407,6 +463,7 @@ while($myLoopIterator-le($rowsToLoopThrough))
 
     # start downloading PDF
     #This  order callsmy attempt download method. the order of the paramaters is Paramount!!
+    #  required parametres [bool]$isFirstAttempt,[string]$url, [string]$backupUrl, [string]$fileName, [string]$destination
     My-Attempt-Download $true $myUrl $backupUrl $myName $myDestination
    
     $myLoopIterator++
@@ -429,19 +486,6 @@ Write-Output -InputObject "";
 
 
 
-Write-Output -InputObject "Done with Looping through myRetryJobs";
-
-Write-Output -InputObject $timer.elapsed.totalseconds;
-Write-Output -InputObject "";
-
-
-#foreach ($myItem in $myJobs)
-
-
-
-#Finds all .tmp files and removes them Link that explains this: https://devblogs.microsoft.com/scripting/how-can-i-use-windows-powershell-to-delete-all-the-tmp-files-on-a-drive/
-
-
 $myFolderPath=$myOutputPath.Remove($myOutputPath.Length-1, 1)
 
 
@@ -449,17 +493,23 @@ Write-Output -InputObject $timer.elapsed.totalseconds;
 Write-Output -InputObject "";
 
 
-$doneMessage= "All documents attempted downloaded";
-Write-Output -inputObject $doneMessage;
-
-Write-Output -InputObject $timer.elapsed.totalseconds;
-Write-Output -InputObject "";
 
 My-verify-PDFs;
 
 
 Write-Output -InputObject "Now Looping through myRetryJobs"
 My-loop-thorugh-BitsJobs $myRetryJobs;
+Write-Output -InputObject "Done with Looping through myRetryJobs";
+
+Write-Output -InputObject $timer.elapsed.totalseconds;
+Write-Output -InputObject "";
+
+$doneMessage= "All documents attempted downloaded";
+Write-Output -inputObject $doneMessage;
+
+Write-Output -InputObject $timer.elapsed.totalseconds;
+Write-Output -InputObject "";
+
 
 My-verify-PDFs;
 
@@ -469,7 +519,8 @@ My-end-result-writing;
 
 Write-Output -InputObject "Cleaning away all .tmp files"
 
-# get-childitem -path $myFolderPath -include *.tmp -Force -Recurse| foreach ($_) {remove-item $_.fullname -Force}
+#Finds all .tmp files and removes them Link that explains this: https://devblogs.microsoft.com/scripting/how-can-i-use-windows-powershell-to-delete-all-the-tmp-files-on-a-drive/
+get-childitem -path $myFolderPath -include *.tmp -Force -Recurse| foreach ($_) {remove-item $_.fullname -Force}
 
 Write-Output -InputObject "Cleaning done"
  #find en metode til at se .tmp filstørelse og forbinde br-nummer til evaluering i excel arket.
