@@ -94,6 +94,8 @@ function My-check-downloadStatus
             $connectionAttempts++;
             $transferMessage="{0} {1}"-f $ParamJob.DisplayName ,"Is struggling to make a connection";
             Write-Output -InputObject $transferMessage
+
+            sleep 60;
             if($connectionAttempts -ge 3)
             {
                 Write-Output -inputObject "Download timed out! quitting transfer";
@@ -133,15 +135,18 @@ function My-check-downloadStatus
         } # List the errors.
 
     default 
-        {
-        "retrying with second link"; 
-        # Suspend-BitsTransfer -BitsJob $myItem; 
-        $description= $ParamJob.Description
-       # Write-Output -inputObject "Now writing description";
-       # Write-Output -InputObject $description;
-        $myName=$ParamJob.DisplayName
-
-        $2ndJob= My-Attempt-Download $false $myUrl $description $myName $myDestination
+        { if($list -ne $myRetryJobs)
+            {
+            $retryMessage="{0} {1}"-f $ParamJob.Displayname, "retrying with second link"; 
+            # Suspend-BitsTransfer -BitsJob $myItem; 
+            Write-Output -inputObject $retryMessage;
+            # Write-Output -InputObject $description;
+            $myName=$ParamJob.DisplayName;
+            $description=$ParamJob.Description;
+            $myDestination="{0}{1}{2}" -f $myOutputPath,$myName,".PDF";
+            #$true $myUrl $backupUrl $myName $myDestination
+            $2ndJob= My-Attempt-Download $false $myUrl $description $myName $myDestination
+            }
         } #  Perform corrective action.
 
        # } # Poll for status, sleep for 5 seconds, and recurse.
@@ -347,24 +352,32 @@ function My-Attempt-Download
 { 
     param([bool]$isFirstAttempt,[string]$url, [string]$backupUrl, [string]$fileName, [string]$destination)
     $myMethodUrl=$url;
+
     if ($backupUrl -like ""){$backupUrl="not available"}
     if ($myMethodUrl -like ""){$myMethodUrl="not available"}
-    $myAttemptString= "{0} {1} {2} {3}" -f "now attempting download:",$fileName,"from the url:",$url;
+    
  
     
     if ( $myMethodUrl -like "*not available*")
         {
-            $missingUrl="No functional URL found: Download attempt abandoned"
+            $missingUrl="{0} {1}"-f"No functional URL found! swtitching to backup Url for", $fileName;
             Write-Output -InputObject $missingUrl;
         
             #assign the backupURL as the URL for the next attempt
-            $url=$backupUrl;
+            $myMethodUrl=$backupUrl;
+
+            #Notify the script that this is a retry
             $backupUrl="{0}  {1}" -f $backupUrl, "This is a retry!"
         
             $isFirstAttempt=$false;
         }
+
+    $myAttemptString= "{0} {1} {2} {3}" -f "now attempting download:",$fileName,"from the url:",$myMethodUrl;
+
+    Write-Output -InputObject $myAttemptString ;
+
     #make sure this is not a 3rd retry
-    If ($backupUrl -cnotlike "*This is a retry!  This is a retry!*")
+    If ($backupUrl -cnotlike "*This is a retry!  This is a retry!*" -and $myMethodUrl -cnotlike "*not available*")
         {   
             Write-Output -InputObject $myAttemptString ;
             Write-Output -InputObject "";
@@ -377,6 +390,12 @@ function My-Attempt-Download
             if($isFirstAttempt -eq $true){$myJobs.Add($job)>$null;}
             else{$myRetryJobs.Add($job)>$null}
         }
+    else
+    { 
+        if($backupUrl -like "*This is a retry!*"){$myAttemptString="{0} {1}{2}"-f"No backup URL found for", $fileName,": All download attempts abandoned" ; }
+        else{$myAttemptString="{0} {1}"-f"No URL found for", $fileName}
+        Write-Output -InputObject $myAttemptString;
+    }
  
 }
 
@@ -439,8 +458,6 @@ $ExcelObj = New-Object -comobject Excel.Application
 
 #Opens Workbook (change the path in string
 $ExcelWorkBook = $ExcelObj.Workbooks.Open($myExcelPath)
-
-
 
 
 #Opens sheet
@@ -555,4 +572,6 @@ Write-Output -InputObject $timer.elapsed.totalseconds;
 ### Code to clean up after testing. DO NOT EXECUTE!
 # Get-BitsTransfer -AllUsers| Remove-BitsTransfer
 # get-childitem -path $myFolderPath -include * -Force -Recurse| foreach ($_) {remove-item $_.fullname -Force}
+
+
 ###
