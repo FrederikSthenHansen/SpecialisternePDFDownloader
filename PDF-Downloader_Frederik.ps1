@@ -400,6 +400,27 @@ foreach ($myLittleItem in $list)
     }
 }
 
+function My-verify-PDFs
+{
+#Reset my excel row counter to overwrite previous results to reflect any change.
+$resultNumber=2
+    foreach ($pdf in $myPDFs)
+    {
+    $verifiedString="";
+    $resultString
+    $myPdfPath="{0}{1}{2}" -f $myOutputPath,$pdf.BaseName,$pdf.Extension ;
+    $myPdfContent=Get-Content -Path $myPdfPath -TotalCount 3 ;
+    if($myPdfContent -like "*%PDF-*"){$verifiedString= "{0} {1}" -f $pdf.BaseName, "Verified!"; $resultstring= "Succesful"; }
+    elseif($myPdfContent -like "*<!DOCTYPE html>*") {$verifiedString="{0} {1}" -f $pdf.BaseName, "is a HTML-file"; $resultString= "Failed";}
+    else{$verifiedString="{0} {1}" -f $pdf.BaseName, "is not a PDF"; $resultString= "Failed";}
+    if($resultString -like "*Failed*"){Remove-Item $pdf.fullname;}
+    write-output -InputObject $verifiedString;
+    # My-add-to-results $pdf.BaseName $resultString $verifiedString;
+    
+    }
+}
+
+
 
 #######
 #end of the functions seciton
