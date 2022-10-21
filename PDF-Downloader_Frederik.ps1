@@ -1,80 +1,123 @@
 ﻿# Frederik Sthen Hansen Specialist academy:
 
 
-#################################################
-# Edit within this area:
-
-#Input the location of excel workbook in the code below: Make sure that the input value is within " "
-#  example $myExcelPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmeringcase2\opgavefiler\GRI_2017_2020 (1)"
-
-
-$myExcelPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmeringcase2\opgavefiler\GRI_2017_2020 (1)"
-
-
-#input name of the sheet within the workbook, that data has to be gathered from, in the code below. Make sure that the input value is within " "
-# example: $mySheet="0"
-
-$mySheet= "0"
+Enum myInputType{
+Path = 1
+File = 2
+Number = 3
+Text= 4
+}
+$myPathEnum= [myInputType]::Path
+$myFileEnum= [myInputType]::File
+$myNumberEnum= [myInputType]::Number
+$myTextEnum=[myInputType]::Text
 
 
-# Input the number of the column containing the first URL to attempt download from. When counting columns start at 1. for column AL the number is 38
-#example:   $myFirstUrlColumn=38
-$myFirstUrlColumn=38
+ 
+function My-set-property
+{
+param([myInputType]$inputType, [string]$Target)
+
+if ($inputType -eq [myInputType]::File)
+{
+$userInput= Read-Host -Prompt "Please input the name of the Excel-file to download PDF's from `n"
+}
+else
+{  
+  switch([string]$Target)
+    {
+    "MyExcelPath"
+                {$userInput= Read-Host -Prompt "Please input the path to folder containing the excel-file from which to download PDFs and press enter
+  `n (Navigate to the file using the pathfinder, go to the bar displaying the sequence of folders and right-click it. `n
+   Then select `"copy address`" and paste it below.) `n"}
+
+    "myOutputPath"
+                {$userInput= Read-Host -prompt "Please input the path to the folder where you want the PDF's downloaded to and press enter. 
+`n((Navigate to the folder using the pathfinder, go to the bar displaying the sequence of folders and right-click it. `n
+   Then select `"copy address`" and paste it below.)`n"}
+
+   "myFirstUrlColumn"
+{$userInput= read-host -Prompt "Please input the number of the primary column to draw links from `n (column A=1, B=2 etc.) Press enter when done"}
+
+"mySecondUrlColumn"
+{$userInput= read-host -Prompt "Please input the number of the secondary column to draw links from `n (column A=1, B=2 etc.) "}
+
+"myNamingColumn"
+{$userInput= read-host -Prompt "Please input the number of the column which governs the naming of the downloaded files `n (column A=1, B=2 etc.) Press enter when done "}
+
+"mysheet"
+{$userInput= read-host -Prompt "Please input the name of the sheet in the excel-File to draw values from. Press enter when done"}
+
+   
 
 
-# Input the number of the column (vertical) containing the first URL to attempt download from. When counting columns start at 1. for column AL the number is 38
-#example:   $mySecondUrlColumn=39
-$mySecondUrlColumn=39
+    }
+}
+My-verify-user-input $userInput $inputType $Target; 
+}
 
-#type in the number of the column (vertical) containing the fields by which act as the naming convention for any downloaded PDFs
-#example: $myNamingColumn=1
-$myNamingColumn=1
-
-#input the path you want the downloaded files deposited at:
-#example: $myOutputPath= "C:\Users\Documents"
-
-$myOutputPath= "C:\Users\KOM\Documents\FSH Specialist Academy 2022\Programmeringcase2\Ny mappe (2)\SpecialisternePDFDownloader\Output-Reports\"
+function My-verify-user-input
+{
+param( $ParamInput, [myInputType] $ParamType, [string]$Target )
+$verifiedHere=$false;
 
 
-#HUSK AT LAVE EN README TIL STUDENTERMEDHJÆLPERE!!!!#
+if ($ParamType -eq [myInputType]::Path -or $ParamType -eq [myInputType]::File)
+{ if($paramType -eq[myInputType]::File){ $testPath="{0}{1}{2}"-f $Script:myexcelPath, $userInput,".xlsx";}
+else {$testPath=$ParamInput}
+$verifiedHere= Test-path -path  $testPath}
 
-# Here you can input the intended location for the Excel workbook detailing the results from executing the script
-# By default the results will be stored in the same folder as the PDF's
-# Example of default: $myResultsPath=$myOutputPath
-# Example of custom path: $myResultsPath= "C:\Users\Documents\my-results-folder"
-$myResultsPath=$myOutputPath
+if ($ParamType -eq [myInputType]::Number){$ParamInput=[int]$ParamInput; $verifiedHere= $ParamInput -is [int]}
 
-#Use the snippet here in the Powershell console for easy cleaning away of TMP files (remove the # fron each line of the snippet, to activate the code
-# and add them again to disable the code (not needed per se)
-#Snippet starts below:
+if( $ParamType -eq [myInputType]::Text){$ParamInput=$ParamInput.ToString(); $verifiedHere=$true;}
 
-# $myFolderPath=$myOutputPath.Remove($myOutputPath.Length-1, 1);
-# get-childitem -path $myFolderPath -include *.tmp -Force -Recurse| foreach ($_) {remove-item $_.fullname -Force};
+#
+if($verifiedHere-eq $true -and $paramType -eq [myInputType]::Path)
+{
+switch($target)
+    { #is a path switch necesary here?
+    "MyExcelPath"
+                {$script:myExcelPath="{0}{1}"-f $ParamInput,"\";  }
 
-#snippet ends above:
-##### 
+    "myOutputPath"
+                {$script:myOutputPath="{0}{1}"-f $ParamInput,"\"}
+    
+               # $target="{0}{1}"-f "$",$Target;
+               # $myPath="{0}{1}"-f $ParamInput,"\"; 
 
-#input start index
-#$myStartIndex= 
-
-#Input ending index
-#$myEndIndex=
-
-#comment this out by placing a # in front of it, if you want the script loop all used rows in the excel sheet
-#$rowsToLoopThrough=$myEndIndex
+                #Set-variable -Name $target -Value $myPath -Scope script ;
 
 
+   }
+}
+elseif($verifiedHere-eq $true -and $paramType -eq [myInputType]::File){$script:myexcelPath="{0}{1}"-f $Script:myexcelPath,$paramInput}
+elseif ($verifiedHere -eq $true)
+{switch($target)
+    {
+    "myFirstUrlColumn"
+    {$script:myFirstUrlColumn= $paraminput}
+
+    "mySecondUrlColumn"
+    {$script:mySecondUrlColumn= $paraminput}
+
+    "myNamingColumn"
+    {$script:myNamingColumn= $paraminput}
+
+    "mysheet"
+    {$script:mysheet=$ParamInput}
+    }
+}
 
 
-# This ends the User Input Area
-####################################################
 
+else
+{#inform the user of the error and prompt new input.
+Write-Output -InputObject "Your input was not valid!"
 
+My-set-property $ParamType $target
 
-
-#########
-# Functions section:
-##########
+}
+}
 
 function My-check-downloadStatus
 {   Param($ParamJob, [int]$connectionAttempts)
@@ -451,6 +494,42 @@ $resultNumber=2
 #end of the functions seciton
 ########
 
+
+$script:myExcelPath
+$Script:myOutputPath
+$Stript:mySheet
+[int]$Script:myFirstUrlColumn
+[int] $Script:mySecondUrlColumn
+[int]$Script:myNamingColumn
+
+#set folder containing excelfile and add the file to the path
+ My-set-property $myPathEnum "myExcelPath"; 
+ My-set-property $myFileEnum "myExcelPath";
+
+#set ouput folder:
+My-set-property $mypathEnum "myOutputPath"; $myResultsPath=$Script:myOutputPath
+
+#set sheet and columns in excel-file 
+My-set-property $myTextEnum "mySheet"; My-set-property $myNumberEnum "myFirstUrlColumn"; 
+My-set-property $myNumberEnum "mySecondUrlColumn";My-set-property $myNumberEnum "myNamingColumn";
+
+
+
+
+
+ #
+
+ 
+
+
+# $myFirstUrlColumn=  read-host -prompt "Please input the number of the column to draw links from (column A=1, B=2 etc.) "
+ 
+# $myFirstUrlColumn
+# $myResultsPath=$myOutputPath
+
+
+
+
 $timer = [Diagnostics.Stopwatch]::StartNew()
 
 
@@ -479,7 +558,7 @@ $myRetryJobs = New-Object System.Collections.ArrayList
 ############
 #PLACEHOLDER CODE FOR TESTING!!!
 
- $rowsToLoopThrough= 100
+# $rowsToLoopThrough= 100
 
 ########
 
@@ -520,6 +599,7 @@ Write-Output -InputObject $timer.elapsed.totalseconds;
 Write-Output -InputObject "";
 
 Write-Output -InputObject "Now Looping through myJobs"
+
 My-loop-thorugh-BitsJobs $myJobs;
 
 Write-Output -InputObject "Done with Looping through myJobs";
@@ -527,11 +607,7 @@ Write-Output -InputObject "Done with Looping through myJobs";
 Write-Output -InputObject $timer.elapsed.totalseconds;
 Write-Output -InputObject "";
 
-
-
-
 $myFolderPath=$myOutputPath.Remove($myOutputPath.Length-1, 1)
-
 
 Write-Output -InputObject $timer.elapsed.totalseconds;
 Write-Output -InputObject "";
@@ -554,7 +630,6 @@ Write-Output -inputObject $doneMessage;
 Write-Output -InputObject $timer.elapsed.totalseconds;
 Write-Output -InputObject "";
 
-
 My-verify-PDFs;
 
 Write-Output -InputObject "Writing download results to excel file"
@@ -569,8 +644,8 @@ get-childitem -path $myFolderPath -include *.tmp -Force -Recurse| foreach ($_) {
 Write-Output -InputObject "Cleaning done"
  #find en metode til at se .tmp filstørelse og forbinde br-nummer til evaluering i excel arket.
 
+$doneMessage= "All PDF's verified. The script is now finished!";
 
- $doneMessage= "All PDF's verified. The script is now finished!";
 Write-Output -inputObject $doneMessage;
 
 Write-Output -InputObject $timer.elapsed.totalseconds;
