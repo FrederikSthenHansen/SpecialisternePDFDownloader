@@ -305,6 +305,43 @@ foreach ($myLittleItem in $list)
 
 }
 
+
+workflow My-result-writing
+{
+param($paramPDFs)
+
+$resultBR=$ExcelWorkSheet.cells.Item($resultNumber, $myNamingColumn).value2;
+            $myWildBR="{0}{1}{2}"-f "*",$resultBR,"*"; 
+
+
+            $PdfsString=$myPDFs.Basename ;
+            $consoleMessage= "{0}{1}{2}"-f "now checking if ",$resultBR," was succesfully downloaded."
+            Write-Host $consoleMessage
+            #Check is BR is missing from folder and add negative end result if true: NOt working currently. all PDF are listed as failed.
+            if ($paramPDFs.Basename.Contains($resultBR))
+                {
+                    $myResult= "Successful";$myExplanation="";
+                }
+            else
+                {### Long winded code for insert a new row
+                    #add new row to the sheet and record the result
+                    $eRow = $resultsheet.cells.item($resultNumber,1).entireRow
+                    $active = $eRow.activate()
+            
+                    $xlShiftDown = [microsoft.office.interop.excel.xlDirection]::xlDown;
+
+                    $active = $eRow.insert($xlShiftDown)
+                    ### end of long-winded code for inserting a new row
+
+                    $myResult="Failed";
+                    $myExplanation="None of the Urls returned a PDF"; 
+                }
+
+            My-add-to-results $resultBR $myResult $myExplanation
+            $consoleMessage= "{0}{1}"-f "result found and noted for ",$resultBR
+            Write-Host $consoleMessage
+}
+
 function My-end-result-writing 
 {
 
@@ -325,35 +362,35 @@ function My-end-result-writing
     $resultNumber=2
     while($resultNumber -le ($rowsToLoopThrough))
         {
-            $resultBR=$ExcelWorkSheet.cells.Item($resultNumber, $myNamingColumn).value2;
-            $myWildBR="{0}{1}{2}"-f "*",$resultBR,"*"; 
+           # $resultBR=$ExcelWorkSheet.cells.Item($resultNumber, $myNamingColumn).value2;
+           # $myWildBR="{0}{1}{2}"-f "*",$resultBR,"*"; 
 
 
-            $PdfsString=$myPDFs.Basename ;
-            $consoleMessage= "{0}{1}{2}"-f "now checking if ",$resultBR," was succesfully downloaded."
-            Write-Host $consoleMessage
+           # $PdfsString=$myPDFs.Basename ;
+           # $consoleMessage= "{0}{1}{2}"-f "now checking if ",$resultBR," was succesfully downloaded."
+           # Write-Host $consoleMessage
             #Check is BR is missing from folder and add negative end result if true: NOt working currently. all PDF are listed as failed.
-            if ($myPDFs.Basename.Contains($resultBR))
-                {
-                    $myResult= "Successful";$myExplanation="";
-                }
-            else
-                {### Long winded code for insert a new row
-                    #add new row to the sheet and record the result
-                    $eRow = $resultsheet.cells.item($resultNumber,1).entireRow
-                    $active = $eRow.activate()
-            
-                    $xlShiftDown = [microsoft.office.interop.excel.xlDirection]::xlDown;
+           # if ($myPDFs.Basename.Contains($resultBR))
+            #    {
+            #        $myResult= "Successful";$myExplanation="";
+            #    }
+            #else
+            #    {### Long winded code for insert a new row
+            #        #add new row to the sheet and record the result
+            #        $eRow = $resultsheet.cells.item($resultNumber,1).entireRow
+            #        $active = $eRow.activate()
+           # 
+            #        $xlShiftDown = [microsoft.office.interop.excel.xlDirection]::xlDown;
 
-                    $active = $eRow.insert($xlShiftDown)
+             #       $active = $eRow.insert($xlShiftDown)
                     ### end of long-winded code for inserting a new row
 
-                    $myResult="Failed";
-                    $myExplanation="None of the Urls returned a PDF"; 
-                }
+              #      $myResult="Failed";
+               #     $myExplanation="None of the Urls returned a PDF"; 
+            #    }
 
-            My-add-to-results $resultBR $myResult $myExplanation
-        
+           # My-add-to-results $resultBR $myResult $myExplanation
+        My-result-writing $myPDFs
         $resultNumber++;
         }
 
