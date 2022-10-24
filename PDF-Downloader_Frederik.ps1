@@ -330,7 +330,8 @@ function My-end-result-writing
 
 
             $PdfsString=$myPDFs.Basename ;
-
+            $consoleMessage= "{0}{1}{2}"-f "now checking if ",$resultBR," was succesfully downloaded."
+            Write-Host $consoleMessage
             #Check is BR is missing from folder and add negative end result if true: NOt working currently. all PDF are listed as failed.
             if ($myPDFs.Basename.Contains($resultBR))
                 {
@@ -486,6 +487,7 @@ $resultNumber=2
     # My-add-to-results $pdf.BaseName $resultString $verifiedString;
     
     }
+    write-host "Verification done"
 }
 
 
@@ -612,7 +614,7 @@ $myFolderPath=$myOutputPath.Remove($myOutputPath.Length-1, 1)
 Write-Output -InputObject $timer.elapsed.totalseconds;
 Write-Output -InputObject "";
 
-
+$myPDFs=get-childitem -path $myFolderPath -include *.PDF
 
 My-verify-PDFs;
 
