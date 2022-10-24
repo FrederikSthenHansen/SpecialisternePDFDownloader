@@ -597,7 +597,7 @@ $myRetryJobs = New-Object System.Collections.ArrayList
 ############
 #PLACEHOLDER CODE FOR TESTING!!!
 
-# $rowsToLoopThrough= 100
+ $rowsToLoopThrough= 10
 
 ########
 
