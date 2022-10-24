@@ -1,8 +1,6 @@
 
 Important: 
 1.This currently only works in Powershell, when run as Admin, with Developer settings enabled in Windows settings!
-2. Its a good idea to enable viewing "hidden" files in the Pathfinder (stifinder). Its a checkbox under "View" ("vis") in the top bar of the Pathfinder.
-   This is because the script may leave .tmp files of any failed download attempts 
 
 How the script works:
 
